@@ -1,0 +1,4 @@
+TYPEMAP
+
+JavaScript::Backend::JSC::Context		T_PTROBJ
+
