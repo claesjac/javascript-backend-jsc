@@ -9,7 +9,7 @@ JSValueRef
     {
         SV *orz = sv_newmortal();
         /* Convert js value to perl */
-        JSValueRefToSV(self, $var, &orz, &exception);
+        ConvertJSValueRefToSV(self, $var, &orz, &exception);
         sv_setsv($arg, orz);
     }
 

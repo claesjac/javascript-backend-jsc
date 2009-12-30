@@ -3,39 +3,13 @@
 #include "XSUB.h"
 
 #include "Context.h"
+#include "TypeConversion.h"
 #include <JavaScriptCore/JavaScriptCore.h>
 
 typedef Context * JavaScript__Backend__JSC__Context;
 
 SV *gSharedRuntime = NULL;
 
-void JSValueRefToSV(Context * ctx, JSValueRef jsval, SV **sv, JSValueRef *exception) {
-    *exception = NULL;
-    
-    switch (JSValueGetType(ctx->ctx, jsval)) {
-        case kJSTypeNumber: {    
-            double d = JSValueToNumber(ctx->ctx, jsval, exception);
-            if (*exception) {
-                sv_setsv(*sv, &PL_sv_undef);
-            }
-            else {
-                sv_setnv(*sv, d);
-            }
-        }
-        break;
-        
-        case kJSTypeBoolean:
-            sv_setsv(*sv, JSValueToBoolean(ctx->ctx, jsval) == TRUE ? &PL_sv_yes : &PL_sv_no);
-        break;
-        
-        case kJSTypeUndefined:
-            sv_setsv(*sv, &PL_sv_undef);
-        break;
-        
-        default:
-            croak("Unable to convert type: %d to perl", JSValueGetType(ctx->ctx, jsval));
-    }
-}
 
 MODULE = JavaScript::Backend::JSC       PACKAGE = JavaScript::Backend::JSC::Runtime
 
@@ -160,7 +134,9 @@ eval(self,source,options=NULL)
         }
         if (exception) {
             /* An exception was thrown, wrap this */
-            fprintf(stderr, "An exception occured\n");
+            r = sv_newmortal();
+//            ConvertJSValueRefToSV(self, exception, &r, NULL);
+            sv_setsv(ERRSV, r);
             XSRETURN_UNDEF;
         }
         

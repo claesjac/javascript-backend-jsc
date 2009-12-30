@@ -2,7 +2,6 @@
 
 use strict;
 use warnings;
-use utf8;
 use Test::More qw(no_plan);
 
 use JavaScript::Backend::JSC;
@@ -20,3 +19,9 @@ ok(!$cx->eval("false;"));
 # Numerics
 is($cx->eval("1;"), 1);
 is($cx->eval("-1;"), -1);
+is($cx->eval("0;"), 0);
+is($cx->eval("-1.1;"), -1.1);
+is($cx->eval("1.1;"), 1.1);
+
+# Strings
+is($cx->eval("'with no funny chars';"), "with no funny chars");
