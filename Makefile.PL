@@ -14,10 +14,9 @@ WriteMakefile(
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/JavaScript/Backend/JSC.pm', # retrieve abstract from module
        AUTHOR         => 'Claes Jakobsson <claes@apple.com>') : ()),
-    LIBS              => [''], # e.g., '-lm'
+    LIBS              => ['-framework JavaScriptCore'], # e.g., '-lm'
     DEFINE            => '', # e.g., '-DHAVE_SOMETHING'
-    INC               => '-I.', # e.g., '-I. -I/usr/include/other
-    CCFLAGS           => '-FJavaScriptCore -framework JavaScriptCore'
+    INC               => '-I. -FJavaScriptCore', # e.g., '-I. -I/usr/include/other
 	# Un-comment this if you add C files to link with later:
-    # OBJECT            => '$(O_FILES)', # link all the C files too
+    OBJECT            => '$(O_FILES)', # link all the C files too
 );

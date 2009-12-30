@@ -2,21 +2,40 @@
 #include "perl.h"
 #include "XSUB.h"
 
-#include "ppport.h"
-
+#include "Context.h"
 #include <JavaScriptCore/JavaScriptCore.h>
-
-#define HAS_CONTEXT(self, name) hv_exists((HV *) SvRV(self), name, strlen(name))
-
-struct Context {
-    const char *name;
-};
-
-typedef struct Context Context;
 
 typedef Context * JavaScript__Backend__JSC__Context;
 
 SV *gSharedRuntime = NULL;
+
+void JSValueRefToSV(Context * ctx, JSValueRef jsval, SV **sv, JSValueRef *exception) {
+    *exception = NULL;
+    
+    switch (JSValueGetType(ctx->ctx, jsval)) {
+        case kJSTypeNumber: {    
+            double d = JSValueToNumber(ctx->ctx, jsval, exception);
+            if (*exception) {
+                sv_setsv(*sv, &PL_sv_undef);
+            }
+            else {
+                sv_setnv(*sv, d);
+            }
+        }
+        break;
+        
+        case kJSTypeBoolean:
+            sv_setsv(*sv, JSValueToBoolean(ctx->ctx, jsval) == TRUE ? &PL_sv_yes : &PL_sv_no);
+        break;
+        
+        case kJSTypeUndefined:
+            sv_setsv(*sv, &PL_sv_undef);
+        break;
+        
+        default:
+            croak("Unable to convert type: %d to perl", JSValueGetType(ctx->ctx, jsval));
+    }
+}
 
 MODULE = JavaScript::Backend::JSC       PACKAGE = JavaScript::Backend::JSC::Runtime
 
@@ -56,29 +75,100 @@ _create_named_context(self, name)
         if (HAS_CONTEXT(self, name)) {
             croak("A context with the name '%s' already exists in this runtime", name);
         }
-        Newz(0, ctx, 1, Context);
-        ctx->name = savepv(name);
+        ctx = CreateContext(name);
+        if (ctx == NULL) {
+            
+        }
         RETVAL = ctx;
     OUTPUT:
         RETVAL
         
-void
-DESTROY(self)
-    SV *self;
-    CODE:
-        {
-        }
-
 MODULE = JavaScript::Backend::JSC       PACKAGE = JavaScript::Backend::JSC::Context
 
 void
 DESTROY(self)
     JavaScript::Backend::JSC::Context self;
     CODE:
+        if (self && self->ctx) {
+            JSGlobalContextRelease(self->ctx);
+            self->ctx = NULL;
+        }
         if (self && self->name) {
             Safefree(self->name);
             self->name = NULL;
         }
+
+void
+set_option(self, option, value)
+    JavaScript::Backend::JSC::Context self;
+    const char * option;
+    SV * value;
+    CODE:
+        SetContextOption(self, option, value);
+    
+SV *
+get_option(self, option)
+    JavaScript::Backend::JSC::Context self;
+    const char * option;
+    PREINIT:
+        SV * s;
+    CODE:
+        s = sv_newmortal();
+        GetContextOption(self, option, &s);
+        RETVAL = s;
+    OUTPUT:
+        RETVAL
+        
+JSValueRef
+eval(self,source,options=NULL)
+    JavaScript::Backend::JSC::Context self;
+    SV *source;
+    HV *options;
+    PREINIT:
+        JSValueRef      exception = NULL;
+        JSStringRef     script;
+        JSObjectRef     thisObject;
+        JSStringRef     sourceURL;
+        int             startingLineNumber;
+        JSValueRef      result;
+        SV *            r;
+        ContextOptions  savedOptions;
+    CODE:
+        if (!SvPOK(source)) {
+            croak("Invalid source, can't eval");
+        }
+        /* JSC always assumes UTF8 source so upgrade if necessary */
+        if (SvUTF8(source)) {
+            script = JSStringCreateWithUTF8CString(SvPVutf8_nolen(source));
+        }
+        else {
+            SV *c = sv_2mortal(newSVsv(source));
+            script = JSStringCreateWithUTF8CString(SvPVutf8_nolen(c));
+        }
+        
+        if (options != NULL) {
+            /* Make a dup of the the options from the context */
+            Copy(&(self->options), &savedOptions, 1, ContextOptions);
+            SetContextOptions(self, options);
+        }
+        
+        result = JSEvaluateScript(self->ctx, script, NULL, NULL, 0, &exception);
+        
+        if (options != NULL) {
+            /* Restore options */
+            Copy(&savedOptions, &(self->options), 1, ContextOptions);
+        }
+        if (exception) {
+            /* An exception was thrown, wrap this */
+            fprintf(stderr, "An exception occured\n");
+            XSRETURN_UNDEF;
+        }
+        
+        /* Convert js value to perl */
+        RETVAL = result;
+        JSStringRelease(script);
+    OUTPUT:
+        RETVAL
         
 MODULE = JavaScript::Backend::JSC		PACKAGE = JavaScript::Backend::JSC		
 

@@ -13,6 +13,7 @@ require XSLoader;
 XSLoader::load('JavaScript::Backend::JSC', $VERSION);
 
 require JavaScript::Backend::JSC::Runtime;
+require JavaScript::Backend::JSC::Context;
 
 1;
 __END__
