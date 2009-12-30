@@ -128,10 +128,6 @@ eval(self,source,options=NULL)
         
         result = JSEvaluateScript(self->ctx, script, NULL, NULL, 0, &exception);
         
-        if (options != NULL) {
-            /* Restore options */
-            Copy(&savedOptions, &(self->options), 1, ContextOptions);
-        }
         if (exception) {
             /* An exception was thrown, wrap this */
             r = sv_newmortal();
@@ -145,6 +141,11 @@ eval(self,source,options=NULL)
         JSStringRelease(script);
     OUTPUT:
         RETVAL
+    CLEANUP:
+        if (options != NULL) {
+            /* Restore options */
+            Copy(&savedOptions, &(self->options), 1, ContextOptions);
+        }
         
 MODULE = JavaScript::Backend::JSC		PACKAGE = JavaScript::Backend::JSC		
 

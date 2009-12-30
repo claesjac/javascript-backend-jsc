@@ -24,4 +24,12 @@ is($cx->eval("-1.1;"), -1.1);
 is($cx->eval("1.1;"), 1.1);
 
 # Strings
-is($cx->eval("'with no funny chars';"), "with no funny chars");
+my $str = $cx->eval("'with no funny chars';");
+is($str, "with no funny chars");
+
+# Anon objects
+my $obj = $cx->eval("v = {a: 1, b: 2}; v", { ConvertObjects => 1 });
+is_deeply($obj, {a => 1, b => 2});
+
+#$obj = $cx->eval("{};", { ConvertObjects => 1 });
+#isa_ok($obj, "JavaScript::Object");

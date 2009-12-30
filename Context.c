@@ -56,7 +56,6 @@ void SetContextOptions(Context *ctx, HV *options) {
     while ((entry = hv_iternext(options)) != NULL) {
         option = hv_iterkey(entry, &l);
         value = hv_iterval(options, entry);
-        
         SetContextOption(ctx, option, value);
     }
 }
