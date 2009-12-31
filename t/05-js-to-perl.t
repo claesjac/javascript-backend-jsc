@@ -32,6 +32,13 @@ my $obj = $cx->eval("v = {a: 1, b: 2}; v", { ConvertObjects => 1 });
 is_deeply($obj, {a => 1, b => 2});
 
 $obj = $cx->eval("v = {a: 1, b: 2}; v", { ConvertObjects => 0 });
+isa_ok($obj, "JavaScript::Backend::JSC::Object");
 isa_ok($obj, "JavaScript::Object");
 
-is($obj->get("b"), 2);
+# Anon arrays
+my $arr = $cx->eval("w = [1,2,3]; w", { ConvertArrays => 1 });
+is_deeply($arr, [1,2,3]);
+
+$arr = $cx->eval("w [1,2,3]; w", { ConvertArrays => 0 });
+isa_ok($arr, "JavaScript::Backend::JSC::Array");
+isa_ok($arr, "JavaScript::Array");

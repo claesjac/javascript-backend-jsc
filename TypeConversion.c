@@ -1,6 +1,7 @@
 #include "TypeConversion.h"
 
 #define CONSTRUCTOR_PROPERTY "constructor"
+#define LENGTH_PROPERTY "length"
 
 static const char *GetJSObjectRefClassName(Context *ctx, JSObjectRef jsobj, JSValueRef *exception) {
     /* This is a ugly hack until JSC gets a more propriate way of retrieving a class name.
@@ -94,7 +95,29 @@ static void ConvertJSObjectRefToSV(Context *ctx, JSValueRef value, SV **sv, JSVa
         }
     }
     else if (strEQ(clazz, "Array")) {
-        
+        if (ctx->options.convertArrays) {
+            unsigned idx;
+            JSStringRef lengthProperty = JSStringCreateWithUTF8CString(LENGTH_PROPERTY);
+            JSValueRef length = JSObjectGetProperty(ctx->ctx, jsobj, lengthProperty, exception);
+            JSStringRelease(lengthProperty);
+
+            l = (size_t) JSValueToNumber(ctx->ctx, length, exception);
+            
+            AV *av = (AV *) sv_2mortal((SV *) newAV());
+            av_extend(av, (I32) l);
+            
+            for (idx = 0; idx < l; idx++) {
+                JSValueRef property = JSObjectGetPropertyAtIndex(ctx->ctx, jsobj, idx, exception);
+                v = sv_newmortal();
+                ConvertJSValueRefToSV(ctx, property, &v, exception);
+                av_push(av, SvREFCNT_inc(v));
+            }
+            
+            sv_setsv(*sv, newRV_noinc((SV *) av));
+        }
+        else {
+            sv_setsv(*sv, &PL_sv_undef);        
+        }
     }
     else {
         /* Box the object */
