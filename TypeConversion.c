@@ -1,4 +1,6 @@
 #include "TypeConversion.h"
+#include "Object.h"
+#include "Array.h"
 
 #define CONSTRUCTOR_PROPERTY "constructor"
 #define LENGTH_PROPERTY "length"
@@ -116,7 +118,7 @@ static void ConvertJSObjectRefToSV(Context *ctx, JSValueRef value, SV **sv, JSVa
             sv_setsv(*sv, newRV_noinc((SV *) av));
         }
         else {
-            sv_setsv(*sv, &PL_sv_undef);        
+            CreateArray(ctx, value, jsobj, sv);
         }
     }
     else {

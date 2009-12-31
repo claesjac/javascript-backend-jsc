@@ -20,7 +20,7 @@ struct Object {
 
 typedef struct Object Object;
 
-void CreateBoxedObject(Context *, JSValueRef, JSObjectRef, SV **);
+void CreateObject(Context *, JSValueRef, JSObjectRef, SV **);
 void DestroyObject(Object *);
 
 #ifdef _cplusplus
