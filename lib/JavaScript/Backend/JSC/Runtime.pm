@@ -3,7 +3,7 @@ package JavaScript::Backend::JSC::Runtime;
 use strict;
 use warnings;
 
-use base qw(JavaScript::Runtime);
+use parent qw(JavaScript::Runtime);
 
 sub get_context_names {
     my $self = shift;

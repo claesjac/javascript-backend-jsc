@@ -28,6 +28,7 @@ struct ContextOptions {
 typedef struct ContextOptions ContextOptions;
 
 struct Context {
+    SV *                sv;
     JSGlobalContextRef  ctx;
     const char *        name;
   

@@ -31,5 +31,5 @@ is($str, "with no funny chars");
 my $obj = $cx->eval("v = {a: 1, b: 2}; v", { ConvertObjects => 1 });
 is_deeply($obj, {a => 1, b => 2});
 
-#$obj = $cx->eval("{};", { ConvertObjects => 1 });
-#isa_ok($obj, "JavaScript::Object");
+$obj = $cx->eval("v = {a: 1, b: 2}; v", { ConvertObjects => 0 });
+isa_ok($obj, "JavaScript::Object");

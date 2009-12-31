@@ -3,10 +3,12 @@
 #include "XSUB.h"
 
 #include "Context.h"
+#include "Object.h"
 #include "TypeConversion.h"
 #include <JavaScriptCore/JavaScriptCore.h>
 
 typedef Context * JavaScript__Backend__JSC__Context;
+typedef Object * JavaScript__Backend__JSC__Object;
 
 SV *gSharedRuntime = NULL;
 
@@ -56,6 +58,8 @@ _create_named_context(self, name)
         RETVAL = ctx;
     OUTPUT:
         RETVAL
+    CLEANUP:
+        ctx->sv = ST(0);
         
 MODULE = JavaScript::Backend::JSC       PACKAGE = JavaScript::Backend::JSC::Context
 
@@ -119,7 +123,6 @@ eval(self,source,options=NULL)
             SV *c = sv_2mortal(newSVsv(source));
             script = JSStringCreateWithUTF8CString(SvPVutf8_nolen(c));
         }
-        
         if (options != NULL) {
             /* Make a dup of the the options from the context */
             Copy(&(self->options), &savedOptions, 1, ContextOptions);
@@ -146,6 +149,14 @@ eval(self,source,options=NULL)
             /* Restore options */
             Copy(&savedOptions, &(self->options), 1, ContextOptions);
         }
-        
+
+MODULE = JavaScript::Backend::JSC       PACKAGE = JavaScript::Backend::JSC::Object
+
+void
+DESTROY(self)
+    JavaScript::Backend::JSC::Object self;
+    CODE:
+        DestroyObject(self);
+    
 MODULE = JavaScript::Backend::JSC		PACKAGE = JavaScript::Backend::JSC		
 

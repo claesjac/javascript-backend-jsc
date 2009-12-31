@@ -12,8 +12,9 @@ our $VERSION = '0.01';
 require XSLoader;
 XSLoader::load('JavaScript::Backend::JSC', $VERSION);
 
-require JavaScript::Backend::JSC::Runtime;
 require JavaScript::Backend::JSC::Context;
+require JavaScript::Backend::JSC::Object;
+require JavaScript::Backend::JSC::Runtime;
 
 1;
 __END__

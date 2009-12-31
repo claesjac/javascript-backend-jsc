@@ -1,7 +1,12 @@
 #include "TypeConversion.h"
 
+#define CONSTRUCTOR_PROPERTY "constructor"
+
 static const char *GetJSObjectRefClassName(Context *ctx, JSObjectRef jsobj, JSValueRef *exception) {
-    /* This is a ugly hack until JSC gets a more propriate way of retrieving a class name */
+    /* This is a ugly hack until JSC gets a more propriate way of retrieving a class name.
+        In short, get the constructor and stringify it.. that'll output something 
+        like "function Foo()...". Then scanf it to get the part after function */
+    
     size_t l;
     char *b, *clazz;
     JSStringRef propertyName = NULL, s = NULL;
@@ -10,7 +15,7 @@ static const char *GetJSObjectRefClassName(Context *ctx, JSObjectRef jsobj, JSVa
     *exception = NULL;
 
     /* Figure out what class this belongs to */
-    propertyName = JSStringCreateWithUTF8CString("constructor");
+    propertyName = JSStringCreateWithUTF8CString(CONSTRUCTOR_PROPERTY);
     constr = JSObjectGetProperty(ctx->ctx, jsobj, propertyName, exception);
     if (*exception || !constr) goto CLEANUP;
     s = JSValueToStringCopy(ctx->ctx, constr, exception);
@@ -24,6 +29,9 @@ static const char *GetJSObjectRefClassName(Context *ctx, JSObjectRef jsobj, JSVa
         /* Report that we failed to get class name */
         goto CLEANUP;
     }    
+    
+    /* scanf with %[] includes the first non-matching character which is why
+       we need to move the NULL terminator */
     clazz[strlen(clazz) - 1] = '\0';
 
     return clazz;
@@ -42,13 +50,20 @@ CLEANUP:
 }
 
 /* Tmp hack */
-static void ConvertJSObjectRefToSV(Context *ctx, JSObjectRef jsobj, SV **sv, JSValueRef *exception) {
+static void ConvertJSObjectRefToSV(Context *ctx, JSValueRef value, SV **sv, JSValueRef *exception) {
     *exception = NULL;
     size_t i, c, l;
-    const char *clazz = GetJSObjectRefClassName(ctx, jsobj, exception);
+    const char *clazz;
     char key[256];
     SV *v;
     
+    JSObjectRef jsobj = JSValueToObject(ctx->ctx, value, exception);
+    if (*exception) {
+        fprintf(stderr, "Failed to convert to object\n");
+        sv_setsv(*sv, &PL_sv_undef);
+    }
+
+    clazz = GetJSObjectRefClassName(ctx, jsobj, exception);    
     if (*exception)
         goto CLEANUP;
     if (!clazz)
@@ -69,11 +84,13 @@ static void ConvertJSObjectRefToSV(Context *ctx, JSObjectRef jsobj, SV **sv, JSV
                 v = sv_newmortal();
                 ConvertJSValueRefToSV(ctx, property, &v, exception);
                 hv_store(hv, key, l - 1, SvREFCNT_inc(v), 0);
-                JSStringRelease(name);
             }
             JSPropertyNameArrayRelease(properties);
             
             sv_setsv(*sv, newRV_noinc((SV *) hv));
+        }
+        else {
+            CreateObject(ctx, value, jsobj, sv);
         }
     }
     else if (strEQ(clazz, "Array")) {
@@ -81,6 +98,7 @@ static void ConvertJSObjectRefToSV(Context *ctx, JSObjectRef jsobj, SV **sv, JSV
     }
     else {
         /* Box the object */
+        
     }
     
     return;
@@ -91,12 +109,12 @@ CLEANUP:
         Safefree(clazz);
 }
 
-void ConvertJSValueRefToSV(Context *ctx, JSValueRef jsval, SV **sv, JSValueRef *exception) {
+void ConvertJSValueRefToSV(Context *ctx, JSValueRef value, SV **sv, JSValueRef *exception) {
     *exception = NULL;
     
-    switch (JSValueGetType(ctx->ctx, jsval)) {        
+    switch (JSValueGetType(ctx->ctx, value)) {        
         case kJSTypeNumber: {  
-            double d = JSValueToNumber(ctx->ctx, jsval, exception);
+            double d = JSValueToNumber(ctx->ctx, value, exception);
             if (*exception) {
                 sv_setsv(*sv, &PL_sv_undef);
             }
@@ -107,7 +125,7 @@ void ConvertJSValueRefToSV(Context *ctx, JSValueRef jsval, SV **sv, JSValueRef *
         break;
         
         case kJSTypeString: {
-            JSStringRef s = JSValueToStringCopy(ctx->ctx, jsval, exception);
+            JSStringRef s = JSValueToStringCopy(ctx->ctx, value, exception);
             if (*exception) {
                 sv_setsv(*sv, &PL_sv_undef);
             }
@@ -124,20 +142,12 @@ void ConvertJSValueRefToSV(Context *ctx, JSValueRef jsval, SV **sv, JSValueRef *
         }
         break;
         
-        case kJSTypeObject: {
-            JSObjectRef obj = JSValueToObject(ctx->ctx, jsval, exception);
-            if (*exception) {
-                fprintf(stderr, "Failed to convert to object\n");
-                sv_setsv(*sv, &PL_sv_undef);
-            }
-            else {
-                ConvertJSObjectRefToSV(ctx, obj, sv, exception);
-            }
-        }
+        case kJSTypeObject:
+            ConvertJSObjectRefToSV(ctx, value, sv, exception);
         break;
             
         case kJSTypeBoolean:
-            sv_setsv(*sv, JSValueToBoolean(ctx->ctx, jsval) == TRUE ? &PL_sv_yes : &PL_sv_no);
+            sv_setsv(*sv, JSValueToBoolean(ctx->ctx, value) == TRUE ? &PL_sv_yes : &PL_sv_no);
         break;
         
         case kJSTypeUndefined:
@@ -145,6 +155,6 @@ void ConvertJSValueRefToSV(Context *ctx, JSValueRef jsval, SV **sv, JSValueRef *
         break;
         
         default:
-            croak("Unable to convert type: %d to perl", JSValueGetType(ctx->ctx, jsval));
+            croak("Unable to convert type: %d to perl", JSValueGetType(ctx->ctx, value));
     }
 }

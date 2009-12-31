@@ -1,6 +1,7 @@
 TYPEMAP
 
 JavaScript::Backend::JSC::Context		T_PTROBJ
+JavaScript::Backend::JSC::Object		T_PTROBJ
 JSValueRef								JSValueRef
 
 OUTPUT
