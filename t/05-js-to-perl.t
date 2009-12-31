@@ -33,3 +33,5 @@ is_deeply($obj, {a => 1, b => 2});
 
 $obj = $cx->eval("v = {a: 1, b: 2}; v", { ConvertObjects => 0 });
 isa_ok($obj, "JavaScript::Object");
+
+is($obj->get("b"), 2);

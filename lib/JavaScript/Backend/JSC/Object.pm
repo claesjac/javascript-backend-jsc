@@ -5,4 +5,5 @@ use warnings;
 
 use parent qw(JavaScript::Object);
 
+
 1;

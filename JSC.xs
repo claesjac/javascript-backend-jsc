@@ -157,6 +157,38 @@ DESTROY(self)
     JavaScript::Backend::JSC::Object self;
     CODE:
         DestroyObject(self);
-    
+
+JSValueRef
+get(object,key,options=NULL)
+    JavaScript::Backend::JSC::Object object;
+    const char *key;
+    HV *options;
+    PREINIT:
+        Context *       self;
+        JSValueRef      exception = NULL;
+        JSStringRef     property;
+        ContextOptions  savedOptions;
+        JSValueRef      result;
+    CODE:
+        self = object->ctx;
+        if (options != NULL) {
+            /* Make a dup of the the options from the context */
+            Copy(&(self->options), &savedOptions, 1, ContextOptions);
+            SetContextOptions(self, options);
+        }
+        property = JSStringCreateWithUTF8CString(key);
+        result = JSObjectGetProperty(self->ctx, object->object, property, exception);
+        
+        /* Convert js value to perl */
+        RETVAL = result;
+        JSStringRelease(property);
+    OUTPUT:
+        RETVAL
+    CLEANUP:
+        if (options != NULL) {
+            /* Restore options */
+            Copy(&savedOptions, &(self->options), 1, ContextOptions);
+        }
+
 MODULE = JavaScript::Backend::JSC		PACKAGE = JavaScript::Backend::JSC		
 
